@@ -12,6 +12,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/cursos', require('./routes/cursos'));
+app.use('/habilitados', require('./routes/habilitados'));
 
 // Generic error-handling middleware (must have 4 params for Express to treat it as an error handler)
 // eslint-disable-next-line no-unused-vars
