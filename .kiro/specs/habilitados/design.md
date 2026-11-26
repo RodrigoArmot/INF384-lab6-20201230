@@ -130,6 +130,23 @@ El job `test` declara `needs: [secret-scan, sca]`. Si cualquiera de los dos gate
 
 ## Decisiones de diseño
 
+Las siguientes situaciones no están definidas en el pedido funcional. Se resuelven aquí para que la implementación sea determinista.
+
+**Orden de la respuesta**
+El pedido no especifica ningún orden. Se devuelve el orden natural del catálogo (el mismo que `GET /cursos`), sin ordenamiento adicional. Razón: ordenar consume CPU innecesariamente y ningún cliente documentado depende de un orden concreto; si surgiera esa necesidad, es más limpio añadir un parámetro `?orden=` que imponer un criterio implícito ahora.
+
+**Códigos en `aprobados` que no existen en el catálogo**
+El pedido no define qué hacer si un código enviado no corresponde a ningún curso (ej. `["NOEXISTE"]`). Se decide ignorarlos silenciosamente: se añaden al `Set` de aprobados y simplemente ningún curso tendrá ese código como prerrequisito. Razón: un código desconocido no rompe la lógica de habilitación, rechazarlo con 400 obligaría al cliente a conocer el catálogo completo antes de llamar al endpoint, y no hay riesgo de seguridad porque el formato ya está validado por RS-02.
+
+**Duplicados en `aprobados`**
+El pedido no dice qué hacer con `["1INF25","1INF25"]`. Se decide aceptarlos: el `Set` los colapsa en uno solo automáticamente. Razón: tratar los duplicados como error añadiría complejidad de validación sin beneficio funcional; el `Set` resuelve el problema de forma natural y sin coste adicional.
+
+**`aprobados` vacío**
+El pedido no menciona el caso `[]`. Se decide que es válido y devuelve todos los cursos sin prerrequisitos. Razón: semánticamente es correcto — un alumno que no ha aprobado nada puede llevar los cursos que no dependen de ninguno. Rechazarlo forzaría al cliente a manejar un caso especial innecesario.
+
+**Body JSON malformado o sin `Content-Type: application/json`**
+El pedido no especifica la respuesta. Express con `express.json()` devuelve automáticamente HTTP 400 con un mensaje de error antes de que el router procese la petición. Se acepta este comportamiento sin manejarlo explícitamente. Razón: es consistente con el resto de la API y no expone información interna.
+
 **¿Por qué no una función en `repositorio.js`?**
 El repositorio expone acceso a datos; el filtro de habilitación es regla de negocio del endpoint. Mantenerlo en el router preserva la separación de responsabilidades y es consistente con cómo `cursos.js` hace sus propios filtros (por ciclo).
 
