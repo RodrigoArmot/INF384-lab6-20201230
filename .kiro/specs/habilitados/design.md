@@ -141,7 +141,6 @@ SonarCloud necesita el reporte `coverage/lcov.info` para mostrar la cobertura en
 
 ```
 secret-scan ──┐
-secret-scan ──┐
 sca ──────────┼──→ test
 sast ─────────┘
 ```
