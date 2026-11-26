@@ -82,6 +82,52 @@ No se modifica `repositorio.js` ni `formato.js`: la lógica de habilitación es 
 
 ---
 
+## Gates de CI
+
+### Gate 1 — Detección de secretos (Gitleaks)
+
+| Atributo | Valor |
+|---|---|
+| Herramienta | `gitleaks/gitleaks-action@v2` |
+| Umbral | Cualquier hallazgo (cero tolerancia) |
+| Comportamiento | **Bloquea** — el job falla si se detecta un secreto |
+| Etapa | Primer job del pipeline (`secret-scan`), antes de instalar dependencias |
+
+**Por qué en esta etapa:** un secreto que llega a `main` es una brecha inmediata aunque el código nunca se despliegue; verificarlo primero hace que el pipeline falle rápido sin consumir tiempo de los jobs siguientes. `fetch-depth: 0` garantiza que se escaneen todos los commits del PR, no solo el último.
+
+**Por qué bloquea:** un secreto en el repositorio no tiene umbral de tolerancia razonable. La política de TI lo prohíbe explícitamente, y avisar sin bloquear crea una falsa sensación de seguridad.
+
+---
+
+### Gate 2 — SCA: análisis de composición de software (npm audit)
+
+| Atributo | Valor |
+|---|---|
+| Herramienta | `npm audit --audit-level=high` (incluida en npm, sin dependencia adicional) |
+| Umbral | Severidad **high** o **critical** |
+| Comportamiento | **Bloquea** — el job falla si existe al menos una vulnerabilidad de severidad alta o crítica |
+| Etapa | Job `sca`, en paralelo con `secret-scan`, antes del job de tests |
+
+**Por qué en esta etapa:** las vulnerabilidades de dependencias son independientes del código fuente; ejecutar SCA antes de los tests evita desplegar código con componentes comprometidos incluso si todos los tests pasan. Correrlo en paralelo con `secret-scan` reduce el tiempo total del pipeline.
+
+**Por qué bloquea solo desde `high`:** las severidades `low` y `moderate` suelen requerir condiciones de explotación poco probables en este contexto (servicio interno, sin acceso directo a Internet). La política de TI fija el umbral en `high`/`critical`, alineado con el CVSS ≥ 7.0. Avisar en `moderate` sin bloquear quedaría como mejora futura.
+
+**Nota sobre el estado actual:** `lodash 4.17.20` (dependencia directa) tiene una vulnerabilidad `high` (Command Injection, GHSA-35jh-r3h4-6jhm). Este gate bloqueará el pipeline hasta que se actualice a `4.18.1` o superior.
+
+---
+
+### Dependencia entre jobs
+
+```
+secret-scan ──┐
+              ├──→ test
+sca ──────────┘
+```
+
+El job `test` declara `needs: [secret-scan, sca]`. Si cualquiera de los dos gates falla, los tests no corren. Esto evita consumir minutos de CI en una suite completa cuando ya se sabe que el commit no puede llegar a `main`.
+
+---
+
 ## Decisiones de diseño
 
 **¿Por qué no una función en `repositorio.js`?**

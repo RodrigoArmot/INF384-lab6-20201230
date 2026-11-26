@@ -7,7 +7,23 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  # ── Gate 1: Detección de secretos ──────────────────────────────────────────
+  secret-scan:
+    name: Secret scan (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # historial completo para escanear todos los commits del PR
+
+      - name: Escanear secretos con Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Gate 2: SCA — análisis de composición de software ─────────────────────
+  sca:
+    name: SCA (npm audit)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,5 +36,24 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
-      - name: Ejecutar pruebas
-        run: npm test
+      - name: Auditar dependencias (bloquea en high/critical)
+        run: npm audit --audit-level=high
+
+  # ── Tests y cobertura ──────────────────────────────────────────────────────
+  test:
+    name: Tests y cobertura
+    runs-on: ubuntu-latest
+    needs: [secret-scan, sca]     # no correr si hay secretos o vulns altas
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Ejecutar pruebas con cobertura
+        run: npx jest --coverage --coverageThreshold='{"global":{"lines":80}}'
