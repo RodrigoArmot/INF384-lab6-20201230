@@ -112,7 +112,7 @@ No se modifica `repositorio.js` ni `formato.js`: la lógica de habilitación es 
 
 **Por qué bloquea solo desde `high`:** las severidades `low` y `moderate` suelen requerir condiciones de explotación poco probables en este contexto (servicio interno, sin acceso directo a Internet). La política de TI fija el umbral en `high`/`critical`, alineado con el CVSS ≥ 7.0. Avisar en `moderate` sin bloquear quedaría como mejora futura.
 
-**Nota sobre el estado actual:** `lodash 4.17.20` (dependencia directa) tiene una vulnerabilidad `high` (Command Injection, GHSA-35jh-r3h4-6jhm). Este gate bloqueará el pipeline hasta que se actualice a `4.18.1` o superior.
+**Nota:** `lodash` fue actualizado de `4.17.20` a `4.18.1` (commit `bc5c18f`) para resolver GHSA-35jh-r3h4-6jhm. El gate pasó desde el run [CI #2](https://github.com/RodrigoArmot/INF384-lab6-base/actions/runs/45901125446) en adelante.
 
 ---
 
