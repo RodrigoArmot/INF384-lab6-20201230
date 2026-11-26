@@ -24,6 +24,18 @@
         "chatSessionId": "sess_d19dada2-3394-481b-b663-1a879a43fbca",
         "timestamp": 1795728976587
       }
+    ],
+    "3. Middleware de manejo de errores": [
+      {
+        "executionId": "e6dad178-8b36-46db-acfc-c47de4cef5e6",
+        "chatSessionId": "sess_0b1b1e58-8022-4942-9da6-78d4c923444b",
+        "timestamp": 1795728998353
+      },
+      {
+        "executionId": "e6dad178-8b36-46db-acfc-c47de4cef5e6",
+        "chatSessionId": "sess_0b1b1e58-8022-4942-9da6-78d4c923444b",
+        "timestamp": 1795729083905
+      }
     ]
   }
 }
