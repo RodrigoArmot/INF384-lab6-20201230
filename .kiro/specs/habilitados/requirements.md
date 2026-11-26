@@ -36,4 +36,4 @@ El Centro Federado de Informática necesita un endpoint que, dado el conjunto de
 ## Requisito de calidad
 
 ### RQ-01 — Cobertura de líneas (política de TI)
-**EARS (Ubiquitous):** The system shall maintain line coverage at or above 80 % across all source files, as measured by Jest's coverage reporter, for every commit that reaches main.
+**EARS (Ubiquitous):** The system shall maintain global line coverage at or above 80 %, as reported by `jest --coverage --coverageThreshold='{"global":{"lines":80}}'`, and the CI pipeline shall fail the `test` job if that threshold is not met.
