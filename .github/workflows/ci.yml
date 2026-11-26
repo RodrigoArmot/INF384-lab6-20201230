@@ -39,11 +39,37 @@ jobs:
       - name: Auditar dependencias (bloquea en high/critical)
         run: npm audit --audit-level=high
 
+  # ── Gate 3: SAST — análisis estático de código fuente (SonarCloud) ─────────
+  sast:
+    name: SAST (SonarCloud)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # SonarCloud necesita historial completo para blame y new-code
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Ejecutar tests y generar cobertura LCOV
+        run: npx jest --coverage --coverageReporters=lcov --coverageThreshold='{"global":{"lines":80}}'
+
+      - name: Analizar con SonarCloud
+        uses: SonarSource/sonarcloud-github-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
   # ── Tests y cobertura ──────────────────────────────────────────────────────
   test:
     name: Tests y cobertura
     runs-on: ubuntu-latest
-    needs: [secret-scan, sca]     # no correr si hay secretos o vulns altas
+    needs: [secret-scan, sca, sast]   # no correr si hay secretos, vulns altas o hallazgos SAST
     steps:
       - uses: actions/checkout@v4
 

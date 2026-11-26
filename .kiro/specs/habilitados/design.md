@@ -116,15 +116,37 @@ No se modifica `repositorio.js` ni `formato.js`: la lógica de habilitación es 
 
 ---
 
-### Dependencia entre jobs
+### Gate 3 — SAST: análisis estático de código fuente (SonarCloud)
+
+| Atributo | Valor |
+|---|---|
+| Herramienta | `SonarSource/sonarcloud-github-action@v3` |
+| Umbral | Quality Gate por defecto de SonarCloud: 0 issues de severidad **Blocker** o **Critical** en código nuevo |
+| Comportamiento | **Bloquea** — el job `sast` falla si el Quality Gate no pasa; el job `test` no corre |
+| Etapa | Job `sast`, en paralelo con `secret-scan` y `sca`, antes del job `test` |
+
+**Por qué SonarCloud y no CodeQL u otro:**
+CodeQL hace análisis de flujo de datos pero su configuración en repos privados requiere licencia; en repos públicos es gratuito pero el Quality Gate no es configurable desde el workflow. SonarCloud ofrece un Quality Gate configurable, dashboard visual con historial de métricas, y se integra con la cuenta existente del equipo. ESLint con `eslint-plugin-security` hace análisis léxico pero no taint tracking — no detecta, por ejemplo, que un valor de entrada llega sin sanear hasta una operación peligrosa.
+
+**Por qué en esta etapa:**
+SAST analiza el código fuente independientemente de las dependencias y los tests. Correrlo en paralelo con `secret-scan` y `sca` reduce el tiempo total del pipeline. El job `test` depende de los tres gates para garantizar que ningún commit con hallazgos de seguridad llegue a producción aunque los tests pasen.
+
+**Por qué bloquea:**
+Un hallazgo Blocker o Critical en código nuevo representa una vulnerabilidad explotable o un defecto grave introducido en ese PR. Permitir que llegue a `main` aunque los tests pasen es exactamente el escenario que el hallazgo 2 (stack trace expuesto) ejemplificó: el servicio funcionaba, los tests pasaban, pero el código tenía un defecto de seguridad. Avisar sin bloquear no cumple la política de TI.
+
+**Por qué se ejecutan los tests dentro del job `sast`:**
+SonarCloud necesita el reporte `coverage/lcov.info` para mostrar la cobertura en el dashboard y para que el Quality Gate pueda incluir métricas de cobertura. Los tests se corren en este job con `--coverageReporters=lcov` antes del análisis. El job `test` los repite de forma independiente para que el pipeline tenga una evidencia de tests separada del análisis SAST.
+
+---
 
 ```
 secret-scan ──┐
-              ├──→ test
-sca ──────────┘
+secret-scan ──┐
+sca ──────────┼──→ test
+sast ─────────┘
 ```
 
-El job `test` declara `needs: [secret-scan, sca]`. Si cualquiera de los dos gates falla, los tests no corren. Esto evita consumir minutos de CI en una suite completa cuando ya se sabe que el commit no puede llegar a `main`.
+El job `test` declara `needs: [secret-scan, sca, sast]`. Si cualquiera de los tres gates falla, los tests no corren. Esto evita consumir minutos de CI en una suite completa cuando ya se sabe que el commit no puede llegar a `main`.
 
 ---
 
